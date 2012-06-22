@@ -1,7 +1,23 @@
 #!/usr/bin/env bash
 
+# Script used to manually delete a block of a file stored in dfs from the local
+# filesystem of the datanode. It serves HDFS-RAID testing purposes;
+# a block removed from the system should be spotted by hadoop and repaired.
+# The script should be run at the master node (namenode).
+# It partially supports deleting files in remote hosts (using ssh),
+# assuming that the directory under which blocks are stored is the one
+# determined by the hadoop.tmp.dir property in core-site.xml file in the master
+# node.
+
 bin=`dirname "$0"`
 bin=`cd "$bin"; pwd`
+
+# if no args specified, show usage
+if [ $# = 0 ]; then
+  echo "Usage: del-block PATHNAME BLKNUM"
+  echo "       PATHNAME is the name of a file and BLKNUM is the number of the block to be removed."
+  exit 1
+fi
 
 HADOOP_HOME=$(cd ${HADOOP_HOME} | pwd);
 
@@ -17,8 +33,9 @@ fi
 #CYGWIN*) cygwin=true;;
 #esac
 
-HADOOP_TMP_DIR="";
-
+# Attempt to determine the directory under which hadoop stores blocks in the 
+# local file system, througth the hadoop.tmp.dir property of core-site.xml file.
+HADOOP_TMP_DIR="";=
 if [ -z "${HADOOP_CONF_DIR}" ] || ! [ -e "${HADOOP_CONF_DIR}/core-site.xml" ]; then
 	echo "warn: unspecified conf dir; will not know hadoop.tmp.dir";
 else
@@ -41,15 +58,8 @@ if [ -z "${HADOOP_TMP_DIR}" ]; then
 	HADOOP_TMP_DIR="/app/hadoop";
 fi
 
-# if no args specified, show usage
-if [ $# = 0 ]; then
-  echo "Usage: delblock PATHNAME BLKNUM"
-  echo "where PATHNAME is the name of a file"
-  echo "and BLKNUM is the number of the block to be removed."
-  exit 1
-fi
-
 pathName="$1"
+shift
 
 hadoop dfs -test -e $pathName
 pathExists=$?
@@ -70,8 +80,8 @@ numOfBlocks=$(hadoop org.apache.hadoop.hdfs.tools.DFSck $pathName -files -blocks
 #echo $numOfBlocks
 
 blkToDelNum=""
-if [ $# -gt 1 ]; then
-	blkToDelNum="$2";
+if [ $# -gt 0 ]; then
+	blkToDelNum="$1";
 fi
 #echo $blkToDelNum
 
