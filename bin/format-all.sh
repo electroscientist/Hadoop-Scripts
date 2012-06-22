@@ -50,7 +50,7 @@ fi
 if [ -z "${HADOOP_TMP_DIR}" ]; then
 	echo "warn: could not determine hadoop.tmp.dir; local fs not cleaned."
 else
-	rm -rf "${HADOOP_TMP_DIR}/*"
+	rm -rf "${HADOOP_TMP_DIR}"/*
 fi
 
 
@@ -74,7 +74,7 @@ else
 		-C "${HADOOP_LOG_DIR}/../" ${HADOOP_LOG_DIR}
 	#-----------------------------------				
 	
-	rm -rf "${HADOOP_LOG_DIR}/*"	
+	rm -rf "${HADOOP_LOG_DIR}"/*
 fi
 
 
