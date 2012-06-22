@@ -69,11 +69,11 @@ else
 	echo "info: compressing log dir ${HADOOP_LOG_DIR}";
 
 	# Create archive -------------------
-	tar -cz \
-		-f "${ARCHIVE}"\
-		-C "${HADOOP_LOG_DIR}/../" ${HADOOP_LOG_DIR}
+	echo "${HADOOP_LOG_DIR}/.."
+	tar -czf "${HADOOP_LOG_DIR}/../${ARCHIVE}" ${HADOOP_LOG_DIR} 
 	#-----------------------------------				
 	
+	echo "info: cleaning log dir ${HADOOP_LOG_DIR}";
 	rm -rf "${HADOOP_LOG_DIR}"/*
 fi
 
