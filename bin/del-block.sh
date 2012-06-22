@@ -20,12 +20,7 @@ if [ $# = 0 ]; then
 fi
 
 HADOOP_HOME=$(cd "${HADOOP_HOME}"; pwd);
-
-if ! [ "$bin" == "${HADOOP_HOME}/bin" ]; then
-	echo "error: must place and run script in ${HADOOP_HOME}/bin"
-fi
-
-. "${HADOOP_HOME}"/bin/hadoop-config.sh
+HADOOP_CONF_DIR="${HADOOP_HOME}/conf";
 
 #cygwin=false
 #case "`uname`" in
@@ -35,7 +30,7 @@ fi
 # Attempt to determine the directory under which hadoop stores blocks in the 
 # local file system, througth the hadoop.tmp.dir property of core-site.xml file.
 HADOOP_TMP_DIR="";
-if [ -z "${HADOOP_CONF_DIR}" ] || ! [ -d "${HADOOP_CONF_DIR}" ] || ! [ -e "${HADOOP_CONF_DIR}/core-site.xml" ]; then
+if ! [ -d "${HADOOP_CONF_DIR}" ] || ! [ -e "${HADOOP_CONF_DIR}/core-site.xml" ]; then
 	echo "warn: unspecified conf dir; will not know hadoop.tmp.dir";
 else
 	# check if  xmlstarlet tool is available
