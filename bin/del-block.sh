@@ -86,7 +86,7 @@ fi
 #echo $blkToDelNum
 
 if ! [[ "$blkToDelNum" =~ ^[0-9]+$ ]] ; then
-	echo "error: BLKNUM must be a number in [0 - $numOfBlocks]" >&2
+	echo "error: BLKNUM must be a number in [0 - $(($numOfBlocks-1))]" >&2
 	exit 1
 fi
 
@@ -98,6 +98,10 @@ fi
 
 blkToDelEntry=$(hadoop org.apache.hadoop.hdfs.tools.DFSck $pathName -files -blocks -locations 2>&1 1>&1| grep "$blkToDelNum. blk_");
 #echo $blkToDelEntry
+if [ -z "${blkToDelEntry}" ]; then
+	echo "error: no block with number ${blkToDelNum} exists."
+	exit 1;
+fi
 
 blkIsMissing=$(echo "$blkToDelEntry" | grep "MISSING" | wc -l);
 if [ $blkIsMissing -gt 0 ]; then
