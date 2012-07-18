@@ -1,17 +1,36 @@
 #!/usr/bin/env bash
 
-FILENAME=/user/hduser/bob.dat
-SEC_TO_WAIT_FOR_REPAIR=300
+bin=`dirname "$0"`
+bin=`cd "$bin"; pwd`
 
-. ${HADOOP_HOME}/crash-test-sets.sh
-NUM_OF_SETS=$(echo "$SETS" | wc -l);
+. $bin/crash-test-BLOCK_SETS.sh
+
+if [ -z "$ct_FILENAME" ]; then
+	echo "error: filename not specied in argument file" >&2;
+	exit 1;
+else
+	FILENAME="$ct_FILENAME";
+fi
+
+if [ -z "$ct_BLOCK_SETS" ]; then
+	echo "error: sets to delete not specied in argument file" >&2;
+	exit 1;
+else
+	BLOCK_SETS="$ct_BLOCK_SETS";
+fi
+
+
+export ct_SEC_TO_WAIT_FOR_REPAIR=300;
+
+
+NUM_OF_BLOCK_SETS=$(echo "$BLOCK_SETS" | wc -l);
 
 RAID_RESCAN_INTERVAL=$(xmlstarlet sel -t -v "/configuration/property[name='raid.policy.rescan.interval']/value" ${HADOOP_HOME}/conf/hdfs-site.xml);
 
-for i in $(seq 1 $NUM_OF_SETS);
+for i in $(seq 1 $NUM_OF_BLOCK_SETS);
 do
 	
-	BLOCK_SET=$(echo "$SETS" | awk "NR==$i");
+	BLOCK_SET=$(echo "$BLOCK_SETS" | awk "NR==$i");
 	#echo $BLOCK_SET
 
 	echo "Deleting blocks: $BLOCK_SET"
@@ -51,7 +70,7 @@ do
 	echo -n "Waiting for repair.."
 	
 	ATTEMPTS=10
-	SECS_PER_ATTEMPT=$(($SEC_TO_WAIT_FOR_REPAIR/$ATTEMPTS));
+	SECS_PER_ATTEMPT=$(($ct_SEC_TO_WAIT_FOR_REPAIR/$ATTEMPTS));
 	while [ $ATTEMPTS -gt 0 ]; do
 		let ATTEMPTS-=1
 	
