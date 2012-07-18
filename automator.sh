@@ -97,11 +97,13 @@ while [ $ATTEMPTS -gt 0 ]; do
 	fi
 	break;
 done
-echo ""
-echo "$alive datanodes awake."
 if [ $ATTEMPTS -eq 0 ] && [ $alive -le $HADOOP_NUM_OF_EXTRA_DATANODES ]; then 
-	echo "time out"
+	echo " (time out)"
+else
+	echo ""
 fi
+echo "$alive datanodes awake."
+
 #-------------------------------------------------------------------------------
 
 
@@ -111,7 +113,6 @@ ${HADOOP_HOME}/bin/hadoop dfs -put /app/hadoop/data/bob640.dat $FILENAME
 #-------------------------------------------------------------------------------
 echo -n "Wait for raid.."
 # Wait for all blocks to get replication equal to 1.
-SEC_TO_WAIT_FOR_RAID=60
 ATTEMPTS=$(($SEC_TO_WAIT_FOR_RAID/5))
 while [ $ATTEMPTS -gt 0 ]; do
 	let ATTEMPTS-=1
@@ -124,7 +125,7 @@ while [ $ATTEMPTS -gt 0 ]; do
 		sleep 5;
 		continue;
 	elif [ "$res" == "yes" ]; then
-		echo "raid over."
+		echo " done"
 		break;
 	else
 		echo "unhandled situation: debug : res=$res"
@@ -132,7 +133,7 @@ while [ $ATTEMPTS -gt 0 ]; do
 	fi
 done
 if [ $ATTEMPTS -eq 0 ] && [ "$res" == "no" ]; then 
-	echo "time out"
+	echo " (time out)"
 fi
 #-------------------------------------------------------------------------------
 

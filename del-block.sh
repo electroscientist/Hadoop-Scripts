@@ -122,7 +122,6 @@ while (( "$#" )); do
 	if [ $(echo $blkToDelRemoteLocs | wc -w) -gt 1 ];
 	then
 		echo "warn: Block found in more than one location: ${blkToDelRemoteLocs}"
-		continue;
 	fi
 
 	for ip in ${blkToDelRemoteLocs};
@@ -139,7 +138,7 @@ while (( "$#" )); do
 			echo "info: block ${blkToDelName} stored in localhost."
 			cmd="find ${HADOOP_TMP_DIR} -name ${blkToDelName}*"
 			#echo $cmd
-			blkLocalPath=$(eval $cmd)
+			blkLocalPath=$(eval $cmd | awk 'NR==1') # keep only the first path matching
 			printf "%-70s\n" "info: removing block ${blkToDelName} and meta from  ${ip} ..."
 			cmd="rm ${blkLocalPath}"
 			#echo $cmd
@@ -148,7 +147,7 @@ while (( "$#" )); do
 			echo "info: block ${blkToDelName} stored in remote host $ip. (Assuming that hadoop.tmp.dir is ${HADOOP_TMP_DIR})"
 			cmd="ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 ${ip} 'find ${HADOOP_TMP_DIR} -name ${blkToDelName}*'"
 			#echo $cmd
-			blkLocalPath=$(eval $cmd)
+			blkLocalPath=$(eval $cmd | awk 'NR==1')  # keep only the first path matching
 			printf "%-70s\n" "info: removing block ${blkToDelName} and meta from  ${ip} ..."
 			cmd="ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 ${ip} 'rm ${blkLocalPath}'"
 			#echo $cmd
