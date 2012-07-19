@@ -19,7 +19,7 @@ bin=`cd "$bin"; pwd`
 
 # if no args specified, show usage
 if [ $# -ne 1 ]; then
-	echo -e 'Usage:   get-job-counters-by-id "JOBID"'
+	echo -e 'Usage:   get-job-counters-by-id.sh "JOBID"'
 	echo -e '         JOBID is the id of a job as it appears in "hadoop jobs -list all".'
 	echo -e "Example: get-job-counters-by-id job_201207171401_0094"
 	echo -e "Output:  <Counter Name 1>\t<Map>\t<Reduce>\t<Total>"

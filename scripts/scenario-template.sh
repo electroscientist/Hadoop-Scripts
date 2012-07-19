@@ -16,16 +16,10 @@ export rs_LOCAL_FILE=/app/hadoop/data/bob640.dat
 export rs_FILE_SIZE=640;
 
 # Blocks to be deleted from the original file for testing.
-export rs_BLOCK_SETS_FILE="0 1
-1 2
-4 5
-8 9
-0 5 9";
+export rs_BLOCK_SETS_FILE="0,1|1,2|4,5|8,9|0,5,9";
 
 # Blocks to be deleted from the parity file for testing.
-export rs_BLOCK_SETS_PARITY="0 1
-0 2
-3 4 5";
+export rs_BLOCK_SETS_PARITY="0,1|0,2|3,4,5|0,1,2";
 
 
 export rs_TEMP_DIR=/tmp/hadoop-tests

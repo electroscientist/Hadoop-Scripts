@@ -42,7 +42,7 @@ processed=$(echo "$JOB_REPORT_WEBPAGE" | perl -p -e 's/td>\s*\n/td>/g;s/\s*<td/<
 
 # Exploit the structure of the html table that contains the counters to retrieve
 # the counter names and corresponding values.
-echo "$processed"  | perl -lne 'm|<td>([^<]+)</td><td align="right">(.+)</td><td align="right">(.+)</td><td align="right">(.+)</td>|g&&print "$1\t$2\t$3\t$4"'
+echo "$processed"  | perl -lne 'm|<td>([^<]+)</td><td align="right">(.+)</td><td align="right">(.+)</td><td align="right">(.+)</td>|g&&print "$1\t$2\t$3\t$4"' | perl -p -e 's/,//g'
 
 exit 0;
 

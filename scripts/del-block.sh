@@ -23,10 +23,6 @@ fi
 HADOOP_HOME=$(cd "${HADOOP_HOME}"; pwd);
 HADOOP_CONF_DIR="${HADOOP_HOME}/conf";
 
-#cygwin=false
-#case "`uname`" in
-#CYGWIN*) cygwin=true;;
-#esac
 
 # Attempt to determine the directory under which hadoop stores blocks in the 
 # local file system, througth the hadoop.tmp.dir property of core-site.xml file.
@@ -52,6 +48,7 @@ if [ -z "${HADOOP_TMP_DIR}" ]; then
 	echo "warn: assuming hadoop.tmp.dir is /app/hadoop"
 	HADOOP_TMP_DIR="/app/hadoop";
 fi
+HADOOP_TMP_DIR="${HADOOP_TMP_DIR}/dfs";
 
 pathName="$1"
 shift
@@ -62,6 +59,7 @@ if [ $pathExists -ne 0  ]; then
  echo "error: PATHNAME $pathName does not exist."
  exit 1
 fi
+
 
 hadoop dfs -test -d $pathName
 pathIsDir=$?
@@ -77,22 +75,33 @@ blockList=$(hadoop org.apache.hadoop.hdfs.tools.DFSck $pathName -files -blocks -
 numOfBlocks=$( echo "$blockList" | wc -l);
 #echo $numOfBlocks
 
+#check blocks
+for arg in $*; do
+	if ! [[ "$arg" =~ ^[0-9]+$ ]] || [[ "$arg" -lt 0 ]] || [[ "$arg" -ge "$numOfBlocks" ]]; then
+		echo "error: invalid arg $arg -- BLKNUM must be a number in [0 - $(($numOfBlocks-1))]" >&2
+		exit 1;
+	fi
+done
+
+
 # Iterate over the block-ids to be removed
+stat_arg_del=0;
+stat_arg_failed=0;
+stat_arg_missing=0;
+stat_arg_total=0;
+
 while (( "$#" )); do
+	
+	let stat_arg_total+=1;
 
 	blkToDelNum="$1";
 	#echo $blkToDelNum
 
-	if ! [[ "$blkToDelNum" =~ ^[0-9]+$ ]] ; then
-		echo "error: BLKNUM must be a number in [0 - $(($numOfBlocks-1))]" >&2
-		echo "warn : skipping argument $blkToDelNum";
-		shift;
-		continue;
-	fi
-
 	if [ $blkToDelNum -gt 0 ]; then
 		# strip zeros at the begging of the blkToDelNum
-		blkToDelNum="$(echo $blkToDelNum | sed 's/^0//')"
+		blkToDelNum="$(echo $blkToDelNum | sed 's/^0*//')"
+	elif [ $blkToDelNum -eq 0 ]; then
+		blkToDelNum="0";
 	fi
 	#echo $blkToDelNum
 
@@ -101,6 +110,7 @@ while (( "$#" )); do
 	if [ -z "${blkToDelEntry}" ]; then
 		echo "error: no block with number ${blkToDelNum} exists."
 		echo "warn : skipping argument $blkToDelNum";
+		let stat_arg_failed+=1;
 		shift;
 		continue;
 	fi
@@ -109,6 +119,7 @@ while (( "$#" )); do
 	if [ $blkIsMissing -gt 0 ]; then
 		echo "warn: blk $blkToDelNum already missing.";
 		echo "warn : skipping argument $blkToDelNum";
+		let stat_arg_missing+=1;
 		shift;
 		continue;
 	fi
@@ -118,49 +129,73 @@ while (( "$#" )); do
 	blkToDelRemoteLocs=$(echo "$blkToDelEntry" | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}');
 	#echo $blkToDelRemoteLocs
 
+	numOfBlkLocations=$(echo $blkToDelRemoteLocs | wc -w);
 
-	if [ $(echo $blkToDelRemoteLocs | wc -w) -gt 1 ];
+	if [ ${numOfBlkLocations} -gt 1 ];
 	then
 		echo "warn: Block found in more than one location: ${blkToDelRemoteLocs}"
 	fi
 
+	replicas_deleted=0;
 	for ip in ${blkToDelRemoteLocs};
 	do
 
 		if [ -z ${ip} ];
 		then
-			echo "(** Host ip is empty. Skip block.)"
+			echo "warn: error deleting block ${blkToDelName} - Host ip is empty.">&2;
 			continue;
 		fi
 
 
 		if [ "$ip" == "127.0.0.1" ]; then
-			echo "info: block ${blkToDelName} stored in localhost."
-			cmd="find ${HADOOP_TMP_DIR} -name ${blkToDelName}*"
+			#echo "info: block ${blkToDelName} stored in localhost."
+			cmd="find ${HADOOP_TMP_DIR} -name ${blkToDelName}"
 			#echo $cmd
-			blkLocalPath=$(eval $cmd | awk 'NR==1') # keep only the first path matching
-			printf "%-70s\n" "info: removing block ${blkToDelName} and meta from  ${ip} ..."
-			cmd="rm ${blkLocalPath}"
-			#echo $cmd
-			eval $cmd
+			blkLocalPath=$(eval $cmd) # keep only the first path matching
+			if [ -n "$blkLocalPath" ]; then
+				# printf "%-70s\n" "info: removing block ${blkToDelName} and meta from  ${ip} ..."
+				cmd="rm ${blkLocalPath} ${blkLocalPath}_*.meta"
+				#echo $cmd
+				eval $cmd
+				if [ $? -eq 0 ]; then 
+					let replicas_deleted+=1;
+				else 
+					echo "warn: error deleting block ${blkToDelName} from ${ip}.">&2;
+				fi
+			fi
 		else
-			echo "info: block ${blkToDelName} stored in remote host $ip. (Assuming that hadoop.tmp.dir is ${HADOOP_TMP_DIR})"
-			cmd="ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 ${ip} 'find ${HADOOP_TMP_DIR} -name ${blkToDelName}*'"
+			#echo "info: block ${blkToDelName} stored in remote host $ip. (Assuming that hadoop.tmp.dir is ${HADOOP_TMP_DIR})"
+			cmd="ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 ${ip} 'find ${HADOOP_TMP_DIR} -name ${blkToDelName}'"
 			#echo $cmd
 			blkLocalPath=$(eval $cmd | awk 'NR==1')  # keep only the first path matching
-			printf "%-70s\n" "info: removing block ${blkToDelName} and meta from  ${ip} ..."
-			cmd="ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 ${ip} 'rm ${blkLocalPath}'"
-			#echo $cmd
-			eval $cmd
-			if [ $? -eq 0 ]; then echo "OK"; else echo "FAIL"; fi
+			if [ -n "$blkLocalPath" ]; then
+				#printf "%-70s\n" "info: removing block ${blkToDelName} and meta from  ${ip} ..."
+				cmd="ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 ${ip} 'rm ${blkLocalPath} ${blkLocalPath}_*.meta'"
+				#echo $cmd
+				eval $cmd
+				if [ $? -eq 0 ]; then 
+					let replicas_deleted+=1;
+				else 
+					echo "warn: error deleting block ${blkToDelName} from ${ip}.">&2;
+				fi
+			fi
 		fi
 	
 	done
-
+	if [ ${replicas_deleted} -eq ${numOfBlkLocations} ]; then
+		let stat_arg_del+=1;
+	else
+		let stat_arg_failed+=1;
+	fi
 shift;
 
 done
 
+echo "Blocks deleted $stat_arg_del (total=$stat_arg_total, deleted=$stat_arg_del, failed=$stat_arg_failed, missing=$stat_arg_missing)";
+
+if [ $stat_arg_failed -gt 0 ]; then
+	exit 2;
+fi
 exit 0;
 
 

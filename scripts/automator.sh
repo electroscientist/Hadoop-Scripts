@@ -16,7 +16,6 @@ FILENAME=/user/$HADOOP_USER/bob.dat
 SEC_TO_WAIT_FOR_DATANODES_TO_WAKE=120
 SEC_TO_WAIT_FOR_RAID=120
 
-
 #-------------------------------------------------------------------------------
 # Stop all runnning hadoop daemons and wait till they have stopped
 

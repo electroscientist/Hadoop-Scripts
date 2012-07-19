@@ -87,7 +87,7 @@ if [ -z $rs_LOCAL_FILE ]; then
 else
 	# Use an existing file as "original" file.
 	echo "File to use: $rs_LOCAL_FILE";
-	if [ -e "$rs_LOCAL_FILE" ]; then
+	if [[ ! -e "$rs_LOCAL_FILE" ]]; then
 		echo "error: specified file does not exist. Abort">&2;
 		exit 1;
 	else

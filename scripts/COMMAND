@@ -1,0 +1,7 @@
+
+
+# Sum the number of HDFS_BYTES_READ OF ALL JOBS
+./get-jobs-counter.sh "HDFS_BYTES_READ" | cut -f2 | awk '{s+=$1} END {print s}'
+
+
+
