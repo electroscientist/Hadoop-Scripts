@@ -96,7 +96,7 @@ while (( "$#" )); do
 	fi
 	#echo $blkToDelNum
 
-	blkToDelEntry=$( echo "$blockList" | grep "$blkToDelNum. blk_");
+	blkToDelEntry=$( echo "$blockList" | grep "^$blkToDelNum. blk_");
 	#echo $blkToDelEntry
 	if [ -z "${blkToDelEntry}" ]; then
 		echo "error: no block with number ${blkToDelNum} exists."
@@ -157,9 +157,10 @@ while (( "$#" )); do
 	
 	done
 
-shift
+shift;
+
 done
 
-exit 0
+exit 0;
 
 

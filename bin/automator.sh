@@ -61,6 +61,7 @@ fi
 # Compile source code and package the raid classes
 read -n1 -p "Compile Code (y/n)?"
 if [ "$REPLY" == "y" ]; then
+	echo ""
 	cd ${HADOOP_HOME}
 	ant
 	cd -
@@ -73,7 +74,17 @@ fi
 #-------------------------------------------------------------------------------
 # Format file-system, back up logs and clean log directory.
 echo "format all"
-${HADOOP_HOME}/format-all.sh
+${HADOOP_HOME}/scripts/format-all.sh
+if [ $? -ne 0 ]; then 
+	echo "error: formatting"; 
+	read -n1 -p "Continue (y/n)?"
+	if [ "$REPLY" == "y" ]; then
+		echo "";
+	else
+		echo "Abort";
+	fi
+fi
+
 #-------------------------------------------------------------------------------
 
 
@@ -89,7 +100,7 @@ ATTEMPTS=$(($SEC_TO_WAIT_FOR_DATANODES_TO_WAKE/2))
 
 while [ $ATTEMPTS -gt 0 ]; do
 	let ATTEMPTS-=1
-	alive=$(${HADOOP_HOME}/get_number_of_datanodes.sh | grep "Alive" | cut -d':' -f2)
+	alive=$(${HADOOP_HOME}/scripts/get-number-of-datanodes.sh | grep "Alive" | cut -d':' -f2)
 	if [ $alive -le $HADOOP_NUM_OF_EXTRA_DATANODES ]; then
 		echo -n "."
 		sleep 2;
@@ -117,7 +128,7 @@ ATTEMPTS=$(($SEC_TO_WAIT_FOR_RAID/5))
 while [ $ATTEMPTS -gt 0 ]; do
 	let ATTEMPTS-=1
 	
-	res=$(${HADOOP_HOME}/check-if-raided.sh $FILENAME);
+	res=$(${HADOOP_HOME}/scripts/check-if-raided.sh $FILENAME);
 	if [ $? -ne 0 ]; then echo "error"; fi
 
 	if [ "$res" == "no" ]; then
