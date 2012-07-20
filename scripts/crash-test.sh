@@ -4,9 +4,9 @@ bin=`dirname "$0"`
 bin=`cd "$bin"; pwd`
 
 if [ $# -lt 2 ]; then
-	echo 'Usage:   crash-test.sh /dfs/path/to/file "set0|set1|set2..."';
+	echo 'Usage:   $0 /dfs/path/to/file "set0|set1|set2..."';
 	echo '         where setX is a comma separated list of block numbers.';
-	echo "Example: crash-test.sh /user/hduser/bob.dat 0,1|5,9|8,3";
+	echo "Example: $0 /user/hduser/bob.dat 0,1|5,9|8,3";
 	exit 1;
 fi
 
@@ -27,7 +27,7 @@ BLOCK_SETS=$(echo "$BLOCK_SETS" | perl -p -e 's/\|/\n/g;s/,/ /g');
 
 NUM_OF_BLOCK_SETS=$(echo "$BLOCK_SETS" | wc -l);
 
-echo "Working on dfs path: $DFS_PATH";
+echo "DFS PATH: $DFS_PATH";
 
 # Check if file exists
 ${HADOOP_HOME}/bin/hadoop dfs -test -e $DFS_PATH
@@ -55,9 +55,11 @@ do
 
 	#===========================================================================
 
+	timestampstart=$(date +%Y%m%d%H%M%S);
+
 	BLOCK_SET=$(echo "$BLOCK_SETS" | awk "NR==$i");
 
-	echo "Deleting blocks: $BLOCK_SET"
+	echo "Delete blocks: $BLOCK_SET"
 	result=$(${bin}/del-block.sh $DFS_PATH $BLOCK_SET);
 	if [ $? -ne 0 ]; then
 		echo "error: deleting blocks. Abort">&2;
@@ -88,7 +90,7 @@ do
 
 	#===========================================================================
 
-	echo -n "Wait for raid to detect corrupt file.."
+	echo -n "Wait for raid to detect corruption.."
 	CHECK_INTERVAL=10;
 	while true; do
 
@@ -111,11 +113,14 @@ do
 
 	#===========================================================================
 
-	echo -n "Waiting for repair.."
+	echo -n "Waiting for raid to repair path.."
 	CHECK_INTERVAL=10;
 	while true; do
 	
 		fsck_output=$(hadoop fsck $DFS_PATH 2>&1);
+		running_jobs=$(${HADOOP_HOME}/bin/hadoop job -list | grep "jobs currently running" | awk -F" " '{ print $1}');
+
+
 		isCorrupt=$(echo "$fsck_output" | grep -c "CORRUPT");
 		isHealthy=$(echo "$fsck_output" | grep -c "HEALTHY");
 		
@@ -124,13 +129,24 @@ do
 			sleep $CHECK_INTERVAL;
 			continue;
 		elif [[ $isCorrupt -eq 0 && $isHealthy -gt 0 ]]; then
-			echo " repaired.";
-			break;
+			if [[ $running_jobs -gt 0 ]]; then
+				echo -n ".";
+				sleep $CHECK_INTERVAL;
+				continue;
+			else
+				echo " repaired.";
+				break;
+			fi
 		else
-			echo "unhandled case (2): debug: $fsck_output">&2;
+			echo "unhandled case (2): debug: $fsck_output, $running_jobs">&2;
 			exit 1;
 		fi
 	done
 
+	timestampend=$(date +%Y%m%d%H%M%S);
+	
+	bytesread=$(${bin}/get-jobs-counter.sh --from=$timestampstart --to=$timestampend "HDFS_BYTES_READ" | cut -f2 | awk '{s+=$1} END {print s}');
+
+	echo "Total HDFS bytes read: $bytesread"
 done
 

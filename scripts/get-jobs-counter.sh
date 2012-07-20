@@ -16,24 +16,20 @@ while getopts "$optspec" optchar; do
                 from)
                     FROM_VALUE="${!OPTIND}"; OPTIND=$(( $OPTIND + 1 ))
                     #echo "Parsing option: '--${OPTARG}', value: '${FROM_VALUE}'" >&2;
-					shift;
                     ;;
                 from=*)
                     FROM_VALUE=${OPTARG#*=}
                     opt=${OPTARG%=$FROM_VALUE}
                     #echo "Parsing option: '--${opt}', value: '${FROM_VALUE}'" >&2
-					shift;
                     ;;
                 to)
                     TO_VALUE="${!OPTIND}"; OPTIND=$(( $OPTIND + 1 ))
                     #echo "Parsing option: '--${OPTARG}', value: '${TO_VALUE}'" >&2;
-					shift;
                     ;;
                 to=*)
                     TO_VALUE=${OPTARG#*=}
                     opt=${OPTARG%=$TO_VALUE}
                     #echo "Parsing option: '--${opt}', value: '${TO_VALUE}'" >&2
-					shift;
                     ;;
                 *)
                     if [ "$OPTERR" = 1 ] && [ "${optspec:0:1}" != ":" ]; then
@@ -60,10 +56,10 @@ while getopts "$optspec" optchar; do
             ;;
     esac
 done
-
+shift $(($OPTIND - 1))
 
 CTR_NAME="$1";
-#echo $CTR_NAME
+
 if [ -z "$CTR_NAME" ]; then
 	echo "error: no counter name provided" >&2
 	exit 2;
@@ -77,11 +73,13 @@ JOB_LIST=$(${HADOOP_HOME}/bin/hadoop job -list all | grep -e "job_[0-9]*_[0-9]*"
 if [ -n "$FROM_VALUE" ]; then
 	JOB_LIST=$(echo "$JOB_LIST" | awk -v fv=$FROM_VALUE -F"\t" '$2 >= fv { print $0 }');
 fi
+#echo "$JOB_LIST"
 
 # FILTER OUT jobs that started after --to value
 if [ -n "$TO_VALUE" ]; then
 	JOB_LIST=$(echo "$JOB_LIST" | awk -v tv=$TO_VALUE -F"\t" '$2 <= tv { print $0 }');
 fi
+#echo "$JOB_LIST"
 
 JOB_LIST=$(echo "$JOB_LIST" | awk -F"\t" '{ print $1 }');
 JOB_LIST_COUNT=$(echo "$JOB_LIST" | wc -l);
