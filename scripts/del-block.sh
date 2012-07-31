@@ -148,37 +148,62 @@ while (( "$#" )); do
 
 
 		if [ "$ip" == "127.0.0.1" ]; then
-			#echo "info: block ${blkToDelName} stored in localhost."
-			cmd="find ${HADOOP_TMP_DIR} -name ${blkToDelName}"
-			#echo $cmd
-			blkLocalPath=$(eval $cmd) # keep only the first path matching
-			if [ -n "$blkLocalPath" ]; then
-				# printf "%-70s\n" "info: removing block ${blkToDelName} and meta from  ${ip} ..."
-				cmd="rm ${blkLocalPath} ${blkLocalPath}_*.meta"
+
+			ATTEMPTS=3;
+			while [ $ATTEMPTS -gt 0 ]; do
+				let ATTEMPTS-=1;
+			
+				#echo "info: block ${blkToDelName} stored in localhost."
+				cmd="find ${HADOOP_TMP_DIR} -name ${blkToDelName}"
 				#echo $cmd
-				eval $cmd
-				if [ $? -eq 0 ]; then 
-					let replicas_deleted+=1;
-				else 
-					echo "warn: error deleting block ${blkToDelName} from ${ip}.">&2;
+				blkLocalPath=$(eval $cmd) # keep only the first path matching
+				if [ -n "$blkLocalPath" ]; then
+					# printf "%-70s\n" "info: removing block ${blkToDelName} and meta from  ${ip} ..."
+					cmd="rm ${blkLocalPath} ${blkLocalPath}_*.meta"
+					#echo $cmd
+					eval $cmd
+					if [ $? -eq 0 ]; then 
+						let replicas_deleted+=1;
+					else 
+						echo -n "warn: error deleting block ${blkToDelName} from ${ip}.">&2;
+						if [ $ATTEMPTS -gt 0 ]; then
+							echo "Retrying..">&2;
+							continue;
+						else
+							echo "Quit.">&2;
+						fi
+					fi
 				fi
-			fi
+			done;
+
 		else
-			#echo "info: block ${blkToDelName} stored in remote host $ip. (Assuming that hadoop.tmp.dir is ${HADOOP_TMP_DIR})"
-			cmd="ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 ${ip} 'find ${HADOOP_TMP_DIR} -name ${blkToDelName}'"
-			#echo $cmd
-			blkLocalPath=$(eval $cmd | awk 'NR==1')  # keep only the first path matching
-			if [ -n "$blkLocalPath" ]; then
-				#printf "%-70s\n" "info: removing block ${blkToDelName} and meta from  ${ip} ..."
-				cmd="ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 ${ip} 'rm ${blkLocalPath} ${blkLocalPath}_*.meta'"
+	
+			ATTEMPTS=3;
+			while [ $ATTEMPTS -gt 0 ]; do
+				let ATTEMPTS-=1;
+			
+				#echo "info: block ${blkToDelName} stored in remote host $ip. (Assuming that hadoop.tmp.dir is ${HADOOP_TMP_DIR})"
+				cmd="ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 ${ip} 'find ${HADOOP_TMP_DIR} -name ${blkToDelName}'"
 				#echo $cmd
-				eval $cmd
-				if [ $? -eq 0 ]; then 
-					let replicas_deleted+=1;
-				else 
-					echo "warn: error deleting block ${blkToDelName} from ${ip}.">&2;
+				blkLocalPath=$(eval $cmd | awk 'NR==1')  # keep only the first path matching
+				if [ -n "$blkLocalPath" ]; then
+					#printf "%-70s\n" "info: removing block ${blkToDelName} and meta from  ${ip} ..."
+					cmd="ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 ${ip} 'rm ${blkLocalPath} ${blkLocalPath}_*.meta'"
+					#echo $cmd
+					eval $cmd
+					if [ $? -eq 0 ]; then 
+						let replicas_deleted+=1;
+					else 
+						echo -n "warn: error deleting block ${blkToDelName} from ${ip}.">&2;
+						if [ $ATTEMPTS -gt 0 ]; then
+							echo "Retrying..">&2;
+							continue;
+						else
+							echo "Quit.">&2;
+						fi
+					fi
 				fi
-			fi
+			done;
 		fi
 	
 	done

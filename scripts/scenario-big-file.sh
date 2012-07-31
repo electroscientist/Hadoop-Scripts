@@ -13,10 +13,10 @@ export rs_PARITY_FILE_DIR=/raidsrc
 export rs_LOCAL_FILE=
 
 # File size in MB. Size is used only if rs_LOCAL_FILE is left blank.
-export rs_FILE_SIZE=1640;
+export rs_FILE_SIZE=1984; #31 blocks of 64MB
 
 # Blocks to be deleted from the original file for testing.
-export rs_BLOCK_SETS_FILE="0,1|1,2|4,5|8,9|0,5,9|20,21,0,1";
+export rs_BLOCK_SETS_FILE="0,1,6,10,12,17,20,23,28|1,2,3,4,14,15,16,17,26,27,28,29";
 
 # Blocks to be deleted from the parity file for testing.
 export rs_BLOCK_SETS_PARITY="0,1|0,2|3,4,5|0,1,2|6,7|0,5,6";

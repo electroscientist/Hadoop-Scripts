@@ -3,9 +3,41 @@
 bin=`dirname "$0"`
 bin=`cd "$bin"; pwd`
 
+REPORT_FILE=""
+
+optspec=":h-:"
+while getopts "$optspec" optchar; do
+    case "${optchar}" in
+        -) 
+            case "${OPTARG}" in
+               	report=*)
+                    REPORT_FILE=${OPTARG#*=}
+                    opt=${OPTARG%=$REPORT_FILE}
+                    #echo "Parsing option: '--${opt}', value: '${FROM_VALUE}'" >&2
+                    ;;
+                *)
+                    echo "Unknown option --${OPTARG}" >&2
+					exit 2;
+                    ;;
+            esac;;
+        h)
+			echo "Usage:   $0 /dfs/path/to/file \"set0|set1|set2...\"";
+			echo "         where setX is a comma separated list of block numbers.";
+			echo "Example: $0 /user/hduser/bob.dat 0,1|5,9|8,3";
+			echo "         $0 --report=/path/to/output/file /user/hduser/bob.dat 0,1|5,9|8,3";
+			exit 1;
+            ;;
+        *)
+            echo "Unknown option -${OPTARG}" >&2
+			exit 2;
+            ;;
+    esac
+done
+shift $(($OPTIND - 1))
+
 if [ $# -lt 2 ]; then
-	echo 'Usage:   $0 /dfs/path/to/file "set0|set1|set2..."';
-	echo '         where setX is a comma separated list of block numbers.';
+	echo "Usage:   $0 /dfs/path/to/file \"set0|set1|set2...\"";
+	echo "         where setX is a comma separated list of block numbers.";
 	echo "Example: $0 /user/hduser/bob.dat 0,1|5,9|8,3";
 	exit 1;
 fi
@@ -113,7 +145,7 @@ do
 
 	#===========================================================================
 
-	echo -n "Waiting for raid to repair path.."
+	echo -n "Wait for raid to repair path.."
 	CHECK_INTERVAL=10;
 	while true; do
 	
@@ -148,5 +180,8 @@ do
 	bytesread=$(${bin}/get-jobs-counter.sh --from=$timestampstart --to=$timestampend "HDFS_BYTES_READ" | cut -f2 | awk '{s+=$1} END {print s}');
 
 	echo "Total HDFS bytes read: $bytesread"
+	if [ -n "$REPORT_FILE" ]; then
+		echo -e "$timestampstart\t$timestampend\t$res_deleted\t$bytesread" >> $REPORT_FILE;
+	fi
 done
 

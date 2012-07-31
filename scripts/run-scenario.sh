@@ -91,7 +91,7 @@ else
 		echo "error: specified file does not exist. Abort">&2;
 		exit 1;
 	else
-		echo "File size: $(ls -la /app/hadoop/data/bob640.dat | cut -d' ' -f5) bytes"
+		echo "File size: $(ls -la /app/hadoop/data/$rs_LOCAL_FILE | cut -d' ' -f5) bytes"
 	fi
 	cp $rs_LOCAL_FILE $ORIGINAL_FILE
 fi
@@ -151,19 +151,94 @@ while true; do
 	fi
 done;
 
-echo -n "Retrieving files from dfs to local temp dirs..."
-${bin}/clone-from-dfs-to-local.sh ${DFS_FILE_PATH} ${DIR_BEFORE}
-${bin}/clone-from-dfs-to-local.sh ${DFS_PARITY_PATH} ${DIR_BEFORE}
+echo -n "Retrieving main file from dfs to local temp dirs..."
+ATTEMPTS=5;
+while [ $ATTEMPTS -gt 0 ]; do
+	let ATTEMPTS-=1;
+	${bin}/clone-from-dfs-to-local.sh ${DFS_FILE_PATH} ${DIR_BEFORE}
+	clone=$?;
+
+	if [[ $clone -ne 0 && $ATTEMPTS -eq 0 ]]; then
+		echo "error: could not copy path $DFS_FILE_PATH to local fs">&2;
+		rm -rf ${DIR_BEFORE}/${DFS_FILE_PATH}/*
+	elif [ $clone -ne 0 ]; then
+		echo -n "."
+		sleep 10;
+		continue;	
+	else
+		break;
+	fi
+done;
 echo " done"
 
+echo -n "Retrieving parity file from dfs to local temp dirs..."
+ATTEMPTS=5;
+while [ $ATTEMPTS -gt 0 ]; do
+	let ATTEMPTS-=1;
+	${bin}/clone-from-dfs-to-local.sh ${DFS_PARITY_PATH} ${DIR_BEFORE}
+	clone=$?;
 
-${bin}/crash-test.sh ${DFS_FILE_PATH} "${rs_BLOCK_SETS_FILE}"
-${bin}/crash-test.sh ${DFS_PARITY_PATH} "${rs_BLOCK_SETS_PARITY}"
+	if [[ $clone -ne 0 && $ATTEMPTS -eq 0 ]]; then
+		echo "error: could not copy path $DFS_PARITY_PATH to local fs">&2;
+		rm -rf ${DIR_BEFORE}/${DFS_PARITY_PATH}/*
+	elif [ $clone -ne 0 ]; then
+		echo -n "."
+		sleep 10;
+		continue;	
+	else
+		break;
+	fi
+done;
+echo " done"
 
+${bin}/crash-test.sh --report=$LOCAL_TMP_SCENARIO_DIR/main-file-hdfs-bytes-read.txt ${DFS_FILE_PATH} "${rs_BLOCK_SETS_FILE}"
+res=$?;
+if [ $res -ne 0 ]; then
+	echo "error: could not complete crash test on main file">&2;
+fi
+${bin}/crash-test.sh --report=$LOCAL_TMP_SCENARIO_DIR/parity-file-hdfs-bytes-read.txt ${DFS_PARITY_PATH} "${rs_BLOCK_SETS_PARITY}"
+res=$?;
+if [ $res -ne 0 ]; then
+	echo "error: could not complete crash test on parity file">&2;
+fi
 
-echo -n "Retrieving files from dfs to local temp dirs..."
-${bin}/clone-from-dfs-to-local.sh ${DFS_FILE_PATH} ${DIR_AFTER}
-${bin}/clone-from-dfs-to-local.sh ${DFS_PARITY_PATH} ${DIR_AFTER}
+echo -n "Retrieving main file from dfs to local temp dirs..."
+ATTEMPTS=5;
+while [ $ATTEMPTS -gt 0 ]; do
+	let ATTEMPTS-=1;
+	${bin}/clone-from-dfs-to-local.sh ${DFS_FILE_PATH} ${DIR_AFTER}
+	clone=$?;
+
+	if [[ $clone -ne 0 && $ATTEMPTS -eq 0 ]]; then
+		echo "error: could not copy path $DFS_FILE_PATH to local fs">&2;
+		rm -rf ${DIR_AFTER}/${DFS_FILE_PATH}/*
+	elif [ $clone -ne 0 ]; then
+		echo -n "."
+		sleep 10;
+		continue;	
+	else
+		break;
+	fi
+done;
+echo " done"
+echo -n "Retrieving parity file from dfs to local temp dirs..."
+ATTEMPTS=5;
+while [ $ATTEMPTS -gt 0 ]; do
+	let ATTEMPTS-=1;
+	${bin}/clone-from-dfs-to-local.sh ${DFS_PARITY_PATH} ${DIR_AFTER}
+	clone=$?;
+
+	if [[ $clone -ne 0 && $ATTEMPTS -eq 0 ]]; then
+		echo "error: could not copy path $DFS_PARITY_PATH to local fs">&2;
+		rm -rf ${DIR_AFTER}/${DFS_PARITY_PATH}/*
+	elif [ $clone -ne 0 ]; then
+		echo -n "."
+		sleep 10;
+		continue;	
+	else
+		break;
+	fi
+done;
 echo " done"
 
 echo -n "Comparing original and retrieved files..."
